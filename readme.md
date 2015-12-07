@@ -1,6 +1,10 @@
 # EwsMailDl
 
-Microsoft Exchange E-mail Attachment Downloader.
+Microsoft Exchange E-mail Sender and Attachment Downloader.
+
+Tested with Exchange server version 2010 SP2.
+
+## Attachment Downloader
 
 1. Connects to the specified Exchange server.
 2. Subscribes to streaming notifications of type `NewMail` in the specified folder.
@@ -11,9 +15,45 @@ Microsoft Exchange E-mail Attachment Downloader.
 6. If any error occurs, crash (Windows Service Recovery should take care
    of restarting the service).
 
-After downloading all attachments from the matched e-mail, the e-mail is deleted.
+After all attachments are downloaded, the e-mail is deleted.
 
-Tested with Exchange server version 2010 SP2.
+## E-mail Sender
+
+1. Monitors the specified input path for files matching the `*.email` pattern.
+2. Reads, parses and sends e-mail based on the file contents.
+
+After the e-mail is sent, the file is deleted.
+
+The `.email` file should have the following format:
+
+```
+<header-name>: <header-value>
+Body:
+<body>
+```
+
+Available headers are:
+
+  * `Subject` - sets the `EmailMessage.Subject` property.
+
+  * `Importance` - sets the `EmailMessage.Importance` property (`low`, `normal` or `high`).
+
+  * `To`, `ToRecipients` - adds recipients to the `EmailMessage.ToRecipients` list.
+    Multiple recipients should be separated by a comma.
+
+  * `Cc`, `CcRecipients` - adds recipients to the `EmailMessage.CcRecipients` list.
+    Multiple recipients should be separated by a comma.
+
+  * `Bcc`, `BccRecipients` - adds recipients to the `EmailMessage.BccRecipients` list.
+    Multiple recipients should be separated by a comma.
+
+  * `From` - sets the `EmailMessage.From` property.
+  
+  * `ReplyTo` - sets the `EmailMessage.ReplyTo` property.
+
+  * `Html` - `1` or `true` if the e-mail body is HTML. If not specified, the body will still
+    be sent as HTML but all new lines `\n` will be replaced with `<br>` and spaces ` ` at
+	the beginning of each line will be replaced with `&nbsp;`.
 
 ## Requirements
 
@@ -106,6 +146,8 @@ Available configuration arguments are:
   * `folderId` - an ID of the folder in the user's account we're going to be
     monitoring for e-mails. Optional. If specified, the `folderName` is not used.
   
+  * `inputPath` - a path to a folder that should be monitored for `.email` files.
+  
   * `savePath` - a path to a folder where the attachments should be downloaded to.
     Defaults to the current directory.
   
@@ -122,16 +164,38 @@ Available configuration arguments are:
 
 #### Example
 
+Running from console:
+
 ```
 EwsMailDl.exe ^
   /url="http://mail.example.com/EWS/Exchange.asmx" ^
   /username="code1\foobar" ^
   /password="top $$$ecret" ^
   /folderName="Baz" ^
+  /inputPath="C:/emails" ^
   /savePath="C:/attachments" ^
   /subject="FOO" ^
   /subject="BAR" ^
   /timestamp="1"
+```
+
+Sending a text e-mail:
+
+```
+Subject: Test text e-mail
+To: someone@the.net
+Body:
+Hello World!
+```
+
+Sending an HTML e-mail:
+
+```
+Subject: Test HTML e-mail
+To: someone@the.net
+Html: 1
+Body:
+<h1>Hello World!</h1>
 ```
 
 ## License

@@ -24,7 +24,11 @@ namespace EwsMailDl
 
         private EmailDownloader downloader = null;
 
+        private EmailSender sender = null;
+
         private Thread downloaderThread = null;
+
+        private Thread senderThread = null;
 
         private StreamingSubscriptionConnection subConn = null;
 
@@ -186,8 +190,53 @@ namespace EwsMailDl
 
             ServicePointManager.ServerCertificateValidationCallback = CertificateValidationCallback;
 
-            newEmailIdList = new List<ItemId>();
             tokenSource = new CancellationTokenSource();
+
+            if (!string.IsNullOrWhiteSpace(settings.SavePath))
+            {
+                CreateDownloaderThread();
+            }
+
+            if (!string.IsNullOrWhiteSpace(settings.InputPath))
+            {
+                CreateSenderThread();
+            }
+
+            try
+            {
+                if (downloaderThread != null)
+                {
+                    DownloadAndDeleteOld();
+                    downloaderThread.Start();
+                }
+
+                if (senderThread != null)
+                {
+                    senderThread.Start();
+                }
+
+                if (Environment.UserInteractive)
+                {
+                    if (downloaderThread != null)
+                    {
+                        downloaderThread.Join();
+                    }
+
+                    if (senderThread != null)
+                    {
+                        senderThread.Join();
+                    }
+                }
+            }
+            catch (Exception x)
+            {
+                HandleException(x);
+            }
+        }
+
+        private void CreateDownloaderThread()
+        {
+            newEmailIdList = new List<ItemId>();
             emailIdQueue = new BlockingCollection<ItemId>();
             downloader = new EmailDownloader(EventLog, emailIdQueue, tokenSource, settings);
 
@@ -200,7 +249,6 @@ namespace EwsMailDl
             catch (Exception x)
             {
                 HandleException(x);
-                return;
             }
 
             subConn = new StreamingSubscriptionConnection(sub.Service, settings.Lifetime);
@@ -214,22 +262,12 @@ namespace EwsMailDl
             OpenSubscription(subConn);
 
             downloaderThread = new Thread(downloader.Run);
+        }
 
-            try
-            {
-                DownloadAndDeleteOld();
-
-                downloaderThread.Start();
-
-                if (Environment.UserInteractive)
-                {
-                    downloaderThread.Join();
-                }
-            }
-            catch (Exception x)
-            {
-                HandleException(x);
-            }
+        private void CreateSenderThread()
+        {
+            sender = new EmailSender(EventLog, tokenSource, settings);
+            senderThread = new Thread(sender.Run);
         }
 
         private void DownloadAndDeleteOld(int nextPageOffset = 0)
@@ -344,6 +382,11 @@ namespace EwsMailDl
                 if (downloaderThread != null)
                 {
                     downloaderThread.Join(1337);
+                }
+
+                if (senderThread != null)
+                {
+                    senderThread.Join(1337);
                 }
             }
             catch (Exception) { }

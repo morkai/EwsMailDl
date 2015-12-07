@@ -25,6 +25,8 @@ namespace EwsMailDl
 
         public string SavePath { get; set; }
 
+        public string InputPath { get; set; }
+
         public string FolderName { get; set; }
 
         public FolderId FolderId { get; set; }
@@ -41,7 +43,8 @@ namespace EwsMailDl
             Url = new Uri("https://localhost/EWS/Exchange.asmx");
             Username = "someone@localhost";
             Password = "T0PS3CR3T";
-            SavePath = Environment.CurrentDirectory;
+            SavePath = "";
+            InputPath = "";
             FolderName = "Inbox";
             FolderId = null;
             SubjectFilters = new List<string>();
@@ -96,6 +99,10 @@ namespace EwsMailDl
                         SavePath = argValue;
                         break;
 
+                    case "inputpath":
+                        InputPath = argValue;
+                        break;
+
                     case "subject":
                         SubjectFilters.Add(argValue);
                         break;
@@ -124,6 +131,8 @@ namespace EwsMailDl
             sb.AppendFormat("Folder ID  : {0}", FolderId);
             sb.AppendLine();
             sb.AppendFormat("Save path  : {0}", SavePath);
+            sb.AppendLine();
+            sb.AppendFormat("Input path : {0}", InputPath);
             sb.AppendLine();
             sb.AppendFormat("Timestamp  : {0}", Timestamp ? "Yes" : "No");
             sb.AppendLine();
