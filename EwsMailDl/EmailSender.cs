@@ -33,7 +33,9 @@ namespace EwsMailDl
 
             watcher = new FileSystemWatcher(settings.InputPath);
             watcher.Filter = "*.email";
-            watcher.Created += OnEmailFileCreated;
+            watcher.Created += OnEmailFileEvent;
+            watcher.Renamed += OnEmailFileEvent;
+            watcher.Changed += OnEmailFileEvent;
         }
 
         public void Run()
@@ -120,7 +122,7 @@ namespace EwsMailDl
             queue.CompleteAdding();
         }
 
-        private void OnEmailFileCreated(object sender, FileSystemEventArgs e)
+        private void OnEmailFileEvent(object sender, FileSystemEventArgs e)
         {
             if (!queue.IsAddingCompleted && e.ChangeType == WatcherChangeTypes.Created)
             {
@@ -167,7 +169,7 @@ namespace EwsMailDl
                 return null;
             }
 
-            var bodyIndex = rawEmail.IndexOf("Body:");
+            var bodyIndex = rawEmail.IndexOf("Body:", StringComparison.InvariantCultureIgnoreCase);
 
             if (bodyIndex == -1)
             {

@@ -347,13 +347,13 @@ namespace EwsMailDl
             if (Environment.UserInteractive)
             {
                 Console.WriteLine(x);
-
-                Environment.Exit(1);
             }
             else
             {
-                throw x;
+                EventLog.WriteEntry(x.ToString(), EventLogEntryType.Error);
             }
+
+            Environment.Exit(1);
         }
 
         protected override void OnStop()

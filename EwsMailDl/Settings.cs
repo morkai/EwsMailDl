@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Configuration.Install;
 using System.Text;
 using Microsoft.Exchange.WebServices.Data;
 
@@ -35,6 +33,10 @@ namespace EwsMailDl
 
         public bool Timestamp { get; set; }
 
+        public bool Body { get; set; }
+
+        public DeleteMode Delete { get; set; }
+
         private int _lifetime = 30;
 
         public Settings()
@@ -49,21 +51,28 @@ namespace EwsMailDl
             FolderId = null;
             SubjectFilters = new List<string>();
             Timestamp = false;
+            Body = false;
+            Delete = DeleteMode.HardDelete;
         }
 
         public void ReadFromArgs(string[] args)
         {
-            var context = new InstallContext(null, args);
-
-            foreach (DictionaryEntry param in context.Parameters)
+            foreach (var arg in args)
             {
-                string argName = param.Key as string;
-                string argValue = param.Value as string;
-
-                if (argName == null || argValue == null)
+                if (!arg.StartsWith("/"))
                 {
                     continue;
                 }
+
+                var parts = arg.Split(new char[] { '=' }, 2);
+
+                if (parts.Length != 2)
+                {
+                    continue;
+                }
+
+                string argName = parts[0].Substring(1);
+                string argValue = parts[1];
 
                 switch (argName)
                 {
@@ -110,6 +119,18 @@ namespace EwsMailDl
                     case "timestamp":
                         Timestamp = true;
                         break;
+
+                    case "body":
+                        Body = true;
+                        break;
+
+                    case "delete":
+                        Delete = argValue.Equals("soft")
+                            ? DeleteMode.SoftDelete
+                            : argValue.Equals("move")
+                                ? DeleteMode.MoveToDeletedItems
+                                : DeleteMode.HardDelete;
+                        break;
                 }
             }
         }
@@ -136,8 +157,12 @@ namespace EwsMailDl
             sb.AppendLine();
             sb.AppendFormat("Timestamp  : {0}", Timestamp ? "Yes" : "No");
             sb.AppendLine();
+            sb.AppendFormat("Body       : {0}", Body ? "Yes" : "No");
+            sb.AppendLine();
+            sb.AppendFormat("Delete     : {0}", Delete);
+            sb.AppendLine();
             sb.AppendFormat("Subject    : {0}", String.Join(" OR ", SubjectFilters));
-
+            
             return sb.ToString();
         }
 
@@ -167,19 +192,23 @@ namespace EwsMailDl
         public SearchFilter CreateSearchFilter()
         {
             var hasAttachments = new SearchFilter.IsEqualTo(ItemSchema.HasAttachments, true);
-
-            if (SubjectFilters.Count == 0)
-            {
-                return hasAttachments;
-            }
-
             var subjectFilters = new SearchFilter.SearchFilterCollection(LogicalOperator.Or);
 
             foreach (var subjectFilter in SubjectFilters)
             {
-                subjectFilters.Add(new SearchFilter.ContainsSubstring(ItemSchema.Subject, subjectFilter, ContainmentMode.Substring, ComparisonMode.Exact));
+                subjectFilters.Add(new SearchFilter.ContainsSubstring(ItemSchema.Subject, subjectFilter, ContainmentMode.Substring, ComparisonMode.IgnoreCaseAndNonSpacingCharacters));
             }
 
+            if (Body)
+            {
+                if (subjectFilters.Count == 0)
+                {
+                    return null;
+                }
+
+                return subjectFilters;
+            }
+            
             return new SearchFilter.SearchFilterCollection(LogicalOperator.And, hasAttachments, subjectFilters);
         }
 
